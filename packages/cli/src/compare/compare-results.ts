@@ -44,6 +44,8 @@ type PhaseResultsFormatted = Array<
     | "ciMax"
     | "pValue"
     | "asPercent"
+    | "unit"
+    | "sign"
   >
 >;
 
@@ -116,39 +118,45 @@ export class CompareResults {
     logHeading("Benchmark Results Summary", "log");
 
     this.phaseResultsFormatted.forEach((phaseData) => {
-      const { phase, hlDiff, isSignificant, ciMin, ciMax, asPercent } =
-        phaseData;
+      const {
+        phase,
+        pValue,
+        hlDiff,
+        isSignificant,
+        ciMin,
+        ciMax,
+        asPercent,
+      } = phaseData;
       const { percentMedian, percentMax, percentMin } = asPercent;
       let msg = `${chalk.bold(phase)} phase `;
       const estimatorISig = Math.abs(hlDiff) >= 1 ? true : false;
       // isSignificant comes from the confidence interval range and pValue NOT estimator
-      if (isSignificant && estimatorISig) {
-        let coloredDiff;
+      const unit = phaseData.unit;
 
+      if (
+        (isSignificant && estimatorISig) ||
+        (this.fidelity === 1 && hlDiff !== 0)
+      ) {
         msg += "estimated ";
+        const diffToS = (diff: number): string => {
+          const negativeDiff = -diff;
+          return negativeDiff > 0 ? `+${negativeDiff}` : `${negativeDiff}`;
+        };
 
-        if (hlDiff < 0) {
-          coloredDiff = chalk.red(
-            `+${Math.abs(hlDiff)}ms [${ciMax * -1}ms to ${
-              ciMin * -1
-            }ms] OR +${Math.abs(percentMedian)}% [${percentMax * -1}% to ${
-              percentMin * -1
-            }%]`
-          );
-          msg += `regression ${coloredDiff}`;
+        const coloredDiff = `${diffToS(hlDiff)}${unit} [${diffToS(
+          ciMax
+        )}${unit} to ${diffToS(ciMin)}${unit}] OR ${diffToS(
+          percentMedian
+        )}% [${diffToS(percentMax)}% to ${diffToS(percentMin)}%]`;
+        if (hlDiff * phaseData.sign < 0) {
+          msg += `regression ${chalk.red(coloredDiff)}`;
         } else {
-          coloredDiff = chalk.green(
-            `-${Math.abs(hlDiff)}ms [${ciMax * -1}ms to ${
-              ciMin * -1
-            }ms] OR -${Math.abs(percentMedian)}% [${percentMax * -1}% to ${
-              percentMin * -1
-            }%]`
-          );
-          msg += `improvement ${coloredDiff}`;
+          msg += `improvement ${chalk.green(coloredDiff)}`;
         }
+        if (this.fidelity !== 1) msg += ` p=${pValue}`;
       } else {
         msg += `${chalk.grey(
-          `no difference [${ciMax * -1}ms to ${ciMin * -1}ms]`
+          `no difference [${ciMax * -1}${unit} to ${ciMin * -1}${unit}]`
         )}`;
       }
       console.log(msg);

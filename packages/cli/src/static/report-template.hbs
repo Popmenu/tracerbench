@@ -122,7 +122,9 @@
           yAxes: [{
             ticks: {
               callback: function (value) {
-                return `${value} ms`;
+                // Maximum score 100/100 is as high as 10000ms.
+                const SCORE_TO_MS_FACTOR = 10000 / 100;
+                return [`${value} ms`, `${value / SCORE_TO_MS_FACTOR}/100  `];
               }
             }
           }]

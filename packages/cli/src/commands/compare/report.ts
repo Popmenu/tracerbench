@@ -38,7 +38,7 @@ Handlebars.registerHelper("toCamel", (val) => {
   return val.replace(/-([a-z])/g, (g: string) => g[1].toUpperCase());
 });
 Handlebars.registerHelper("isFaster", (analysis) => {
-  return analysis.hlDiff > 0;
+  return analysis.hlDiff * analysis.sign > 0;
 });
 Handlebars.registerHelper("getQuality", (pVal, threshold) => {
   return pVal < threshold;

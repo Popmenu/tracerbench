@@ -8,6 +8,7 @@ export interface PageSetupOptions {
   emulateNetworkConditions: Protocol.Network.EmulateNetworkConditionsRequest;
   deviceMetricsOverride: Protocol.Emulation.SetDeviceMetricsOverrideRequest;
   userAgentOverride: Protocol.Emulation.SetUserAgentOverrideRequest;
+  lhPresets: string;
 }
 
 export default async function setupPage(

@@ -1,3 +1,9 @@
+# Popmenu notice
+## This Fork requires major refactoring before it can be merged to tracerbench
+Lighthouse metrics are represented by PhaseSample interface. 
+Which isn't what PhaseSample name implies.
+The forks waits for a hero to change all the namings and refactor the code and create a PR to the original tracerbench Repo;)
+
 # TracerBench: Automated Chrome Tracing For Benchmarking
 
 [![Build Status](https://github.com/TracerBench/tracerbench/workflows/CI/badge.svg)](https://github.com/TracerBench/tracerbench/actions?workflow=CI)

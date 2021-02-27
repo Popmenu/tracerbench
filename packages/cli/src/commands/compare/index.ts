@@ -4,9 +4,13 @@
 import { flags as oclifFlags } from "@oclif/command";
 import { IConfig } from "@oclif/config";
 import {
+  Benchmark,
+  compareNetworkActivity,
+  createLighthouseBenchmark,
   createTraceNavigationBenchmark,
   Marker,
   NavigationBenchmarkOptions,
+  NavigationSample,
   networkConditions,
   run,
 } from "@tracerbench/core";
@@ -45,6 +49,8 @@ import {
   fidelity,
   headless,
   isCIEnv,
+  lhPresets,
+  lighthouse,
   markers,
   network,
   regressionThreshold,
@@ -90,7 +96,16 @@ export interface ICompareFlags {
   report?: boolean;
   isCIEnv?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
+  lighthouse?: boolean;
+  lhPresets?: string;
 }
+
+export type ExperimentServerConfig = [
+  string /* group */,
+  string /* url */,
+  Marker[],
+  NavigationBenchmarkOptions
+];
 
 export default class Compare extends TBBaseCommand {
   public static description =
@@ -120,6 +135,8 @@ export default class Compare extends TBBaseCommand {
     headless,
     isCIEnv: isCIEnv(),
     regressionThresholdStat,
+    lighthouse,
+    lhPresets,
   };
   public compareFlags: ICompareFlags;
   public parsedConfig: ITBConfig = defaultFlagArgs;
@@ -142,6 +159,26 @@ export default class Compare extends TBBaseCommand {
     await this.parseFlags();
   }
 
+  public createBenchmarks(
+    controlSettings: ExperimentServerConfig,
+    experimentSettings: ExperimentServerConfig
+  ): {
+    control: Benchmark<NavigationSample>;
+    experiment: Benchmark<NavigationSample>;
+  } {
+    if (this.compareFlags.lighthouse) {
+      return {
+        control: createLighthouseBenchmark(...controlSettings),
+        experiment: createLighthouseBenchmark(...experimentSettings),
+      };
+    }
+
+    return {
+      control: createTraceNavigationBenchmark(...controlSettings),
+      experiment: createTraceNavigationBenchmark(...experimentSettings),
+    };
+  }
+
   public async run(): Promise<string> {
     const { hideAnalysis } = this.compareFlags;
     const [controlSettings, experimentSettings] =
@@ -156,12 +193,11 @@ export default class Compare extends TBBaseCommand {
       });
     }
 
-    const benchmarks = {
-      control: createTraceNavigationBenchmark(...controlSettings),
-      experiment: createTraceNavigationBenchmark(...experimentSettings),
-    };
-
     const sampleTimeout = this.parsedConfig.sampleTimeout;
+    const benchmarks = this.createBenchmarks(
+      controlSettings,
+      experimentSettings
+    );
 
     const startTime = timestamp();
     const results = (
@@ -207,6 +243,7 @@ export default class Compare extends TBBaseCommand {
       );
     }
     const resultJSONPath = `${this.parsedConfig.tbResultsFolder}/compare.json`;
+    compareNetworkActivity();
 
     writeFileSync(resultJSONPath, JSON.stringify(results));
 
@@ -339,8 +376,8 @@ export default class Compare extends TBBaseCommand {
    * @param this.parsedConfig - Object containing configs parsed from the Command class
    */
   private generateControlExperimentServerConfig(): [
-    [string, string, Marker[], NavigationBenchmarkOptions],
-    [string, string, Marker[], NavigationBenchmarkOptions]
+    ExperimentServerConfig,
+    ExperimentServerConfig
   ] {
     const stdio = this.parsedConfig.debug ? "inherit" : "ignore";
     const controlBrowser: Partial<ChromeSpawnOptions> = {
@@ -411,6 +448,8 @@ export default class Compare extends TBBaseCommand {
         )
       : {};
 
+    const lhPresets = this.compareFlags.lhPresets;
+
     const controlSettings: [
       string,
       string,
@@ -435,6 +474,7 @@ export default class Compare extends TBBaseCommand {
                 controlNetwork as keyof typeof networkConditions
               ]
             : this.compareFlags.network,
+          lhPresets,
         },
         traceOptions: {
           captureV8RuntimeStats: this.compareFlags.runtimeStats,
@@ -475,6 +515,7 @@ export default class Compare extends TBBaseCommand {
                 experimentNetwork as keyof typeof networkConditions
               ]
             : this.compareFlags.network,
+          lhPresets,
         },
         traceOptions: {
           captureV8RuntimeStats: this.compareFlags.runtimeStats,
