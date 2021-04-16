@@ -48,6 +48,7 @@ import {
   fidelity,
   headless,
   isCIEnv,
+  lhPresets,
   lighthouse,
   markers,
   network,
@@ -95,6 +96,7 @@ export interface ICompareFlags {
   isCIEnv?: boolean;
   regressionThresholdStat: RegressionThresholdStat;
   lighthouse?: boolean;
+  lhPresets?: string;
 }
 
 export type ExperimentServerConfig = [
@@ -133,6 +135,7 @@ export default class Compare extends TBBaseCommand {
     isCIEnv: isCIEnv(),
     regressionThresholdStat,
     lighthouse,
+    lhPresets,
   };
   public compareFlags: ICompareFlags;
   public parsedConfig: ITBConfig = defaultFlagArgs;
@@ -444,6 +447,8 @@ export default class Compare extends TBBaseCommand {
         )
       : {};
 
+    const lhPresets = this.compareFlags.lhPresets;
+
     const controlSettings: [
       string,
       string,
@@ -468,6 +473,7 @@ export default class Compare extends TBBaseCommand {
                 controlNetwork as keyof typeof networkConditions
               ]
             : this.compareFlags.network,
+          lhPresets,
         },
         traceOptions: {
           captureV8RuntimeStats: this.compareFlags.runtimeStats,
@@ -508,6 +514,7 @@ export default class Compare extends TBBaseCommand {
                 experimentNetwork as keyof typeof networkConditions
               ]
             : this.compareFlags.network,
+          lhPresets,
         },
         traceOptions: {
           captureV8RuntimeStats: this.compareFlags.runtimeStats,

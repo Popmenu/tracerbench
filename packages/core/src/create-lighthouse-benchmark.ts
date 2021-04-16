@@ -13,8 +13,44 @@ import {
 } from './metrics/extract-navigation-sample';
 import { Benchmark, BenchmarkSampler } from './run';
 
+async function runLighthouse(
+  prefix: string,
+  url: string,
+  lhSettings: any
+): Promise<PhaseSample[]> {
+  const runnerResult = await lighthouse(url, lhSettings);
+
+  runnerResult.lhr.categories;
+
+  const namePrefix = `tracerbench-results/${prefix}${new URL(url).host.replace(
+    ':',
+    '_'
+  )}`;
+  writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
+  writeFileSync(
+    `${namePrefix}_performance_profile.json`,
+    JSON.stringify(runnerResult.artifacts)
+  );
+
+  return [
+    'first-contentful-paint',
+    'speed-index',
+    'largest-contentful-paint',
+    'interactive',
+    'total-blocking-time',
+    'cumulative-layout-shift'
+  ].map((phase) => ({
+    phase: prefix + phase,
+    duration: runnerResult.lhr.audits[phase].numericValue * 1000,
+    start: 0
+  }));
+}
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
-  constructor(private chrome: LaunchedChrome, private url: string) {}
+  constructor(
+    private chrome: LaunchedChrome,
+    private url: string,
+    private options: Partial<NavigationBenchmarkOptions>
+  ) {}
 
   async dispose(): Promise<void> {
     await this.chrome.kill();
@@ -25,44 +61,49 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     _isTrial: boolean,
     _raceCancellation: RaceCancellation
   ): Promise<NavigationSample> {
-    const runnerResult = await lighthouse(this.url, {
-      formFactor: 'desktop',
-      screenEmulation: {
-        mobile: false,
-        width: 1366,
-        height: 768,
-        deviceScaleFactor: 1
+    const lhPresets: { [key: string]: any } = {
+      mobile: {
+        formFactor: 'mobile',
+        logLevel: 'error',
+        output: 'html',
+        onlyCategories: ['performance'],
+        port: this.chrome.port
       },
-      logLevel: 'error',
-      output: 'html',
-      onlyCategories: ['performance'],
-      port: this.chrome.port
-    });
+      desktop: {
+        formFactor: 'desktop',
+        screenEmulation: {
+          mobile: false,
+          width: 1920,
+          height: 1080,
+          deviceScaleFactor: 1
+        },
+        logLevel: 'error',
+        output: 'html',
+        onlyCategories: ['performance'],
+        port: this.chrome.port
+      }
+    };
 
-    runnerResult.lhr.categories;
+    const presetsToRun = (
+      this.options.pageSetupOptions?.lhPresets ?? 'mobile'
+    ).split(',');
 
-    const namePrefix = `tracerbench-results/${new URL(this.url).host.replace(
-      ':',
-      '_'
-    )}`;
-    writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
-    writeFileSync(
-      `${namePrefix}_performance_profile.json`,
-      JSON.stringify(runnerResult.artifacts)
-    );
+    let phases: PhaseSample[] = [];
 
-    const phases: PhaseSample[] = [
-      'first-contentful-paint',
-      'speed-index',
-      'largest-contentful-paint',
-      'interactive',
-      'total-blocking-time',
-      'cumulative-layout-shift'
-    ].map((phase) => ({
-      phase: phase,
-      duration: runnerResult.lhr.audits[phase].numericValue * 1000,
-      start: 0
-    }));
+    for (const preset of presetsToRun) {
+      const lhSettings = lhPresets[preset];
+      if (!lhSettings) {
+        throw new Error(`Unknown LH preset ${preset}`);
+      }
+      phases = [
+        ...phases,
+        ...(await runLighthouse(
+          presetsToRun.length === 1 ? '' : preset + '-',
+          this.url,
+          lhSettings
+        ))
+      ];
+    }
 
     return {
       metadata: {},
@@ -76,13 +117,13 @@ export default function createLighthouseBenchmark(
   group: string,
   url: string,
   _markers: Marker[],
-  _options: Partial<NavigationBenchmarkOptions> = {}
+  options: Partial<NavigationBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
   return {
     group,
     async setup(_raceCancellation) {
       const chrome = await launch({ chromeFlags: ['--headless'] });
-      return new LighthouseSampler(chrome, url);
+      return new LighthouseSampler(chrome, url, options);
     }
   };
 }

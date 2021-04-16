@@ -61,6 +61,9 @@ OPTIONS
   --isCIEnv=isCIEnv
       Provides a drastically slimmed down stdout report for CI workflows. However does NOT hide analysis.
 
+  --lhPresets=lhPresets
+      [default: mobile] LightHouse presets.
+
   --lighthouse
       Use Google LightHouse.
 

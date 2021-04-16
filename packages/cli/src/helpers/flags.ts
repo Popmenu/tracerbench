@@ -63,6 +63,11 @@ export const lighthouse = oclifFlags.boolean({
   default: false,
 });
 
+export const lhPresets = oclifFlags.string({
+  description: `LightHouse presets.`,
+  default: "mobile",
+});
+
 export const headless = oclifFlags.boolean({
   description: `Run with headless chrome flags`,
   default: false,
