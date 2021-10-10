@@ -118,6 +118,7 @@ export class CompareResults {
     this.phaseResultsFormatted.forEach((phaseData) => {
       const {
         phase,
+        pValue,
         hlDiff,
         isSignificant,
         ciMin,
@@ -152,6 +153,7 @@ export class CompareResults {
           );
           msg += `improvement ${coloredDiff}`;
         }
+        msg += ` p=${pValue}`;
       } else {
         msg += `${chalk.grey(
           `no difference [${ciMax * -1}ms to ${ciMin * -1}ms]`

@@ -31,6 +31,26 @@ async function runLighthouse(
     `${namePrefix}_performance_profile.json`,
     JSON.stringify(runnerResult.artifacts)
   );
+  if (runnerResult.lhr.runtimeError) {
+    throw new Error(
+      `Tracerbench encountered runtime error when running ${url}: ${JSON.stringify(
+        runnerResult.lhr.runtimeError,
+        null,
+        2
+      )}`
+    );
+  }
+  runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
+    if (message.level === 'error') {
+      throw new Error(
+        `Tracerbench encountered console error when running ${url}: ${JSON.stringify(
+          message,
+          null,
+          2
+        )}`
+      );
+    }
+  });
 
   return [
     'first-contentful-paint',
