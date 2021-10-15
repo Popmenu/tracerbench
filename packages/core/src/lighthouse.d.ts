@@ -164,7 +164,7 @@ declare module 'lighthouse' {
     requestedUrl: string;
     finalUrl: string;
     runWarnings: NotYetTyped[];
-    runtimeError: {
+    runtimeError?: {
       code: string;
       message: string;
     };
@@ -192,9 +192,14 @@ declare module 'lighthouse' {
     };
   }
 
+  interface ConsoleMessage {
+    level: string;
+  }
   interface LighthouseResult {
     lhr: LighthouseReport;
-    artifacts: NotYetTyped;
+    artifacts: {
+      ConsoleMessages?: [ConsoleMessage];
+    };
     report: string;
   }
 
