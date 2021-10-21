@@ -61,7 +61,9 @@ async function runLighthouse(
     'cumulative-layout-shift'
   ].map((phase) => ({
     phase: prefix + phase,
-    duration: runnerResult.lhr.audits[phase].numericValue * 1000,
+    duration:
+      runnerResult.lhr.audits[phase].numericValue *
+      (phase === 'cumulative-layout-shift' ? 10000000 : 1000),
     start: 0
   }));
 }
