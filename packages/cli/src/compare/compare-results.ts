@@ -44,6 +44,8 @@ type PhaseResultsFormatted = Array<
     | "ciMax"
     | "pValue"
     | "asPercent"
+    | "unit"
+    | "sign"
   >
 >;
 
@@ -129,34 +131,29 @@ export class CompareResults {
       let msg = `${chalk.bold(phase)} phase `;
       const estimatorISig = Math.abs(hlDiff) >= 1 ? true : false;
       // isSignificant comes from the confidence interval range and pValue NOT estimator
+      const unit = phaseData.unit;
+
       if (isSignificant && estimatorISig) {
-        let coloredDiff;
-
         msg += "estimated ";
+        const diffToS = (diff: number): string => {
+          const negativeDiff = -diff;
+          return negativeDiff > 0 ? `+${negativeDiff}` : `${negativeDiff}`;
+        };
 
-        if (hlDiff < 0) {
-          coloredDiff = chalk.red(
-            `+${Math.abs(hlDiff)}ms [${ciMax * -1}ms to ${
-              ciMin * -1
-            }ms] OR +${Math.abs(percentMedian)}% [${percentMax * -1}% to ${
-              percentMin * -1
-            }%]`
-          );
-          msg += `regression ${coloredDiff}`;
+        const coloredDiff = `${diffToS(hlDiff)}${unit} [${diffToS(
+          ciMax
+        )}${unit} to ${diffToS(ciMin)}${unit}] OR ${diffToS(
+          percentMedian
+        )}% [${diffToS(percentMax)}% to ${diffToS(percentMin)}%]`;
+        if (hlDiff * phaseData.sign < 0) {
+          msg += `regression ${chalk.red(coloredDiff)}`;
         } else {
-          coloredDiff = chalk.green(
-            `-${Math.abs(hlDiff)}ms [${ciMax * -1}ms to ${
-              ciMin * -1
-            }ms] OR -${Math.abs(percentMedian)}% [${percentMax * -1}% to ${
-              percentMin * -1
-            }%]`
-          );
-          msg += `improvement ${coloredDiff}`;
+          msg += `improvement ${chalk.green(coloredDiff)}`;
         }
         msg += ` p=${pValue}`;
       } else {
         msg += `${chalk.grey(
-          `no difference [${ciMax * -1}ms to ${ciMin * -1}ms]`
+          `no difference [${ciMax * -1}${unit} to ${ciMin * -1}${unit}]`
         )}`;
       }
       console.log(msg);

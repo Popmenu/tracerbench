@@ -117,7 +117,9 @@ function findPhases(events: EventModel[], markers: Marker[]): PhaseSample[] {
     phases.push({
       phase: marker.label,
       start: markEvent.start - start,
-      duration: end - markEvent.start
+      duration: end - markEvent.start,
+      sign: 1,
+      unit: 'ms'
     });
   }
   return phases;
@@ -196,4 +198,7 @@ export interface PhaseSample {
    * The duration in microseconds of the phase.
    */
   duration: number;
+
+  sign: 1 | -1;
+  unit: 'ms' | '/100';
 }

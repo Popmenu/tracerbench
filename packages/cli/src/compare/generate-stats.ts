@@ -19,6 +19,8 @@ export type Sample = {
     phase: string;
     start: number;
     duration: number;
+    sign: 1 | -1;
+    unit: "ms" | "/100";
   }>;
 };
 
@@ -55,6 +57,8 @@ export interface HTMLSectionRenderData {
   ciMax: number;
   hlDiff: number;
   phase: string;
+  unit: "ms" | "/100";
+  sign: -1 | 1;
   identifierHash: string;
   frequencyHash: string;
   sampleCount: number;
@@ -67,16 +71,17 @@ export interface HTMLSectionRenderData {
 }
 
 type ValuesByPhase = {
-  [key: string]: number[];
+  [key: string]: { values: number[]; sign: -1 | 1; unit: "ms" | "/100" };
 };
 
 type ValueGen = {
   start: number;
   duration: number;
+  unit: "ms" | "/100";
 };
 
 type CumulativeData = {
-  categories: string[];
+  categories: string[][];
   controlData: number[][];
   experimentData: number[][];
 };
@@ -128,18 +133,22 @@ export class GenerateStats {
       (k) => k !== "duration"
     );
     const durationSection = this.formatPhaseData(
-      valuesByPhaseControl["duration"],
-      valuesByPhaseExperiment["duration"],
-      "duration"
+      valuesByPhaseControl["duration"].values,
+      valuesByPhaseExperiment["duration"].values,
+      "duration",
+      "ms",
+      1
     );
 
     const subPhaseSections: HTMLSectionRenderData[] = subPhases.map((phase) => {
       const controlValues = valuesByPhaseControl[phase];
       const experimentValues = valuesByPhaseExperiment[phase];
       const renderDataForPhase = this.formatPhaseData(
-        controlValues,
-        experimentValues,
-        phase
+        controlValues.values,
+        experimentValues.values,
+        phase,
+        controlValues.unit,
+        controlValues.sign
       );
 
       renderDataForPhase.servers = reportTitles.servers;
@@ -165,14 +174,20 @@ export class GenerateStats {
     samples: Sample[],
     valueGen: (a: ValueGen) => number = (a: ValueGen) => a.duration
   ): ValuesByPhase {
-    const buckets: { [key: string]: number[] } = { ["duration"]: [] };
+    const buckets: ValuesByPhase = {
+      ["duration"]: { values: [], sign: 1, unit: "ms" },
+    };
 
     samples.forEach((sample: Sample) => {
-      buckets["duration"].push(sample["duration"]);
+      buckets["duration"].values.push(sample["duration"]);
 
       sample.phases.forEach((phaseData) => {
-        const bucket = buckets[phaseData.phase] || [];
-        bucket.push(valueGen(phaseData));
+        const bucket = buckets[phaseData.phase] || {
+          values: [],
+          sign: phaseData.sign,
+          unit: phaseData.unit,
+        };
+        bucket.values.push(valueGen(phaseData));
         buckets[phaseData.phase] = bucket;
       });
     });
@@ -191,7 +206,9 @@ export class GenerateStats {
   private formatPhaseData(
     controlValues: number[],
     experimentValues: number[],
-    phaseName: string
+    phaseName: string,
+    unit: "ms" | "/100",
+    sign: -1 | 1
   ): HTMLSectionRenderData {
     // all stats will be converted to milliseconds and rounded to tenths
     const stats = new Stats(
@@ -200,7 +217,7 @@ export class GenerateStats {
         experiment: experimentValues,
         name: phaseName,
       },
-      roundFloatAndConvertMicrosecondsToMS
+      unit === "ms" ? roundFloatAndConvertMicrosecondsToMS : (a: number) => a
     );
 
     const estimatorIsSig = Math.abs(stats.estimator) >= 1 ? true : false;
@@ -210,7 +227,7 @@ export class GenerateStats {
       experiment: [],
     };
     stats.buckets.map((bucket) => {
-      frequency.labels.push(`${bucket.min}-${bucket.max} ms`);
+      frequency.labels.push(`${bucket.min}-${bucket.max} ${unit}`);
       frequency.control.push(bucket.count.control);
       frequency.experiment.push(bucket.count.experiment);
     });
@@ -221,6 +238,8 @@ export class GenerateStats {
       identifierHash: md5sum(phaseName),
       frequencyHash: md5sum(`${phaseName}-frequency`),
       isSignificant: stats.confidenceInterval.isSig && estimatorIsSig,
+      unit,
+      sign,
       sampleCount: stats.sampleCount.control,
       ciMin: stats.confidenceInterval.min,
       ciMax: stats.confidenceInterval.max,
@@ -259,8 +278,15 @@ export class GenerateStats {
     experimentDataSamples: Sample[]
   ): CumulativeData {
     // round and convert from micro to milliseconds
-    const cumulativeValueFunc = (a: { [key: string]: number }): number =>
-      Math.round(convertMicrosecondsToMS(a.start + a.duration));
+    const cumulativeValueFunc = (a: ValueGen): number => {
+      if (a.unit === "ms") {
+        return Math.round(convertMicrosecondsToMS(a.start + a.duration));
+      } else {
+        // Maximum score 100/100 is as high as 10000ms.
+        const SCORE_TO_MS_FACTOR = 10000 / 100;
+        return a.duration * SCORE_TO_MS_FACTOR;
+      }
+    };
 
     const valuesByPhaseControl = this.bucketPhaseValues(
       controlDataSamples,
@@ -275,9 +301,13 @@ export class GenerateStats {
     );
 
     return {
-      categories: phases,
-      controlData: phases.map((k) => valuesByPhaseControl[k]),
-      experimentData: phases.map((k) => valuesByPhaseExperiment[k]),
+      categories: phases.map((k) => [
+        k,
+        valuesByPhaseControl[k].unit,
+        valuesByPhaseControl[k].sign > 0 ? "lower=better" : "higher=better",
+      ]),
+      controlData: phases.map((k) => valuesByPhaseControl[k].values),
+      experimentData: phases.map((k) => valuesByPhaseExperiment[k].values),
     };
   }
 }

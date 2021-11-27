@@ -52,7 +52,7 @@ async function runLighthouse(
     }
   });
 
-  return [
+  const results: PhaseSample[] = [
     'first-contentful-paint',
     'speed-index',
     'largest-contentful-paint',
@@ -63,9 +63,21 @@ async function runLighthouse(
     phase: prefix + phase,
     duration:
       runnerResult.lhr.audits[phase].numericValue *
-      (phase === 'cumulative-layout-shift' ? 10000000 : 1000),
-    start: 0
+      (phase === 'cumulative-layout-shift' ? 100 : 1000),
+    start: 0,
+    sign: 1,
+    unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
   }));
+
+  results.push({
+    phase: prefix + 'total-score',
+    duration: runnerResult.lhr.categories.performance.score * 100,
+    sign: -1,
+    start: 0,
+    unit: '/100'
+  });
+
+  return results;
 }
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(

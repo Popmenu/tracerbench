@@ -5,9 +5,9 @@
         <small class="h5">
           {{#if analysisForPhase.isSignificant}}
             {{#if (isFaster analysisForPhase)}}
-              <span class="text-success font-weight-bolder">({{abs analysisForPhase.hlDiff}} ms faster)</span>
+              <span class="text-success font-weight-bolder">({{abs analysisForPhase.hlDiff}}{{analysisForPhase.unit}} faster)</span>
             {{else}}
-              <span class="text-danger font-weight-bolder">({{abs analysisForPhase.hlDiff}} ms slower)</span>
+              <span class="text-danger font-weight-bolder">({{abs analysisForPhase.hlDiff}}{{analysisForPhase.unit}} slower)</span>
             {{/if}}
           {{else}}
             <span class="text-muted">(No/Borderline Difference)</span>
@@ -40,14 +40,14 @@
         {{else}}
         <strong>slower</strong>
         {{/if}}
-        by <strong>{{abs analysisForPhase.hlDiff}} ms</strong>. TracerBench is 95% confident "{{analysisForPhase.servers.[1].name}}" is
+        by <strong>{{abs analysisForPhase.hlDiff}}{{analysisForPhase.unit}}</strong>. TracerBench is 95% confident "{{analysisForPhase.servers.[1].name}}" is
         {{#if (isFaster analysisForPhase)}}
         <strong>faster</strong>
         {{else}}
         <strong>slower</strong>
         {{/if}}
-        between <strong>{{absSort analysisForPhase.ciMax analysisForPhase.ciMin 0}} ms to
-          {{absSort analysisForPhase.ciMax analysisForPhase.ciMin 1}} ms</strong> based on
+        between <strong>{{absSort analysisForPhase.ciMax analysisForPhase.ciMin 0}}{{analysisForPhase.unit}} to
+          {{absSort analysisForPhase.ciMax analysisForPhase.ciMin 1}}{{analysisForPhase.unit}}</strong> based on
         {{analysisForPhase.sampleCount}} samples using a <i><small>(<a href="https://en.wikipedia.org/wiki/Confidence_interval"
           target="_blank">confidence interval</a>)</small></i>.
         {{/if}}
