@@ -13,6 +13,11 @@ import {
 } from './metrics/extract-navigation-sample';
 import { Benchmark, BenchmarkSampler } from './run';
 
+// Read console errors whitelist from environement variable.
+const allowedConsoleErrors: string[] = (
+  process.env.TRACERBENCH_ALLOWED_CONSOLE_ERRORS || ''
+).split(',');
+
 async function runLighthouse(
   prefix: string,
   url: string,
@@ -41,7 +46,12 @@ async function runLighthouse(
     );
   }
   runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
-    if (message.level === 'error') {
+    if (
+      message.level === 'error' &&
+      !allowedConsoleErrors.some((allowedError) =>
+        message.text.includes(allowedError)
+      )
+    ) {
       throw new Error(
         `Tracerbench encountered console error when running ${url}: ${JSON.stringify(
           message,
