@@ -109,6 +109,12 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       mobile: {
         formFactor: 'mobile',
         logLevel: 'error',
+        screenEmulation: {
+          mobile: true,
+          width: 375,
+          height: 812,
+          deviceScaleFactor: 3
+        },
         output: 'html',
         onlyCategories: ['performance'],
         port: this.chrome.port
