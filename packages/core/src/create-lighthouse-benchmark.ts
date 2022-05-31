@@ -80,6 +80,14 @@ async function runLighthouse(
   }));
 
   results.push({
+    phase: prefix + 'accessibility',
+    duration: runnerResult.lhr.categories.accessibility.score * 100,
+    sign: -1,
+    start: 0,
+    unit: '/100'
+  });
+
+  results.push({
     phase: prefix + 'total-score',
     duration: runnerResult.lhr.categories.performance.score * 100,
     sign: -1,
@@ -116,7 +124,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           deviceScaleFactor: 3
         },
         output: 'html',
-        onlyCategories: ['performance'],
+        onlyCategories: ['performance', 'accessibility'],
         port: this.chrome.port
       },
       desktop: {
@@ -129,7 +137,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         },
         logLevel: 'error',
         output: 'html',
-        onlyCategories: ['performance'],
+        onlyCategories: ['performance', 'accessibility'],
         port: this.chrome.port
       }
     };
