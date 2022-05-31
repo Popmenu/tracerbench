@@ -123,6 +123,14 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           height: 812,
           deviceScaleFactor: 3
         },
+        throttling: {
+          rttMs: 300,
+          throughputKbps: 700,
+          requestLatencyMs: 1125,
+          downloadThroughputKbps: 700,
+          uploadThroughputKbps: 700,
+          cpuSlowdownMultiplier: 4
+        },
         output: 'html',
         onlyCategories: ['performance', 'accessibility'],
         port: this.chrome.port
