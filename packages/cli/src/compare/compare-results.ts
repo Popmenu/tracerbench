@@ -133,7 +133,10 @@ export class CompareResults {
       // isSignificant comes from the confidence interval range and pValue NOT estimator
       const unit = phaseData.unit;
 
-      if (isSignificant && estimatorISig) {
+      if (
+        (isSignificant && estimatorISig) ||
+        (this.fidelity === 1 && hlDiff !== 0)
+      ) {
         msg += "estimated ";
         const diffToS = (diff: number): string => {
           const negativeDiff = -diff;
@@ -150,7 +153,7 @@ export class CompareResults {
         } else {
           msg += `improvement ${chalk.green(coloredDiff)}`;
         }
-        msg += ` p=${pValue}`;
+        if (this.fidelity !== 1) msg += ` p=${pValue}`;
       } else {
         msg += `${chalk.grey(
           `no difference [${ciMax * -1}${unit} to ${ciMin * -1}${unit}]`

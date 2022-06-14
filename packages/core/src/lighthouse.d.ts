@@ -200,6 +200,13 @@ declare module 'lighthouse' {
     lhr: LighthouseReport;
     artifacts: {
       ConsoleMessages?: [ConsoleMessage];
+      Accessibility?: {
+        violations: [
+          {
+            id: string;
+          }
+        ];
+      };
     };
     report: string;
   }

@@ -122,10 +122,16 @@ async function takeSamples<TSample>(
         const samples: TSample[] = new Array(samplesPerGroup);
         groupedSamples[group] = samples;
         sampleGroups.push({ group, samples });
+        if (samplesPerGroup === 1) {
+          groupedSamples[group][0] = sample;
+        }
       } else {
         groupedSamples[group][i - 1] = sample;
       }
       completed++;
+    }
+    if (samplesPerGroup === 1) {
+      break;
     }
   }
   return sampleGroups;

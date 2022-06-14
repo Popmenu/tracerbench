@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import { launch, LaunchedChrome } from 'chrome-launcher';
 import { writeFileSync } from 'fs';
 import lighthouse from 'lighthouse';
@@ -62,38 +63,51 @@ async function runLighthouse(
     }
   });
 
-  const results: PhaseSample[] = [
-    'first-contentful-paint',
-    'speed-index',
-    'largest-contentful-paint',
-    'interactive',
-    'total-blocking-time',
-    'cumulative-layout-shift'
-  ].map((phase) => ({
-    phase: prefix + phase,
-    duration:
-      runnerResult.lhr.audits[phase].numericValue *
-      (phase === 'cumulative-layout-shift' ? 100 : 1000),
-    start: 0,
-    sign: 1,
-    unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
-  }));
+  let results: PhaseSample[] = [];
 
-  results.push({
-    phase: prefix + 'accessibility',
-    duration: runnerResult.lhr.categories.accessibility.score * 100,
-    sign: -1,
-    start: 0,
-    unit: '/100'
-  });
+  if (runnerResult.lhr.categories.performance) {
+    results = [
+      'first-contentful-paint',
+      'speed-index',
+      'largest-contentful-paint',
+      'interactive',
+      'total-blocking-time',
+      'cumulative-layout-shift'
+    ].map((phase) => ({
+      phase: prefix + phase,
+      duration:
+        runnerResult.lhr.audits[phase].numericValue *
+        (phase === 'cumulative-layout-shift' ? 100 : 1000),
+      start: 0,
+      sign: 1,
+      unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
+    }));
 
-  results.push({
-    phase: prefix + 'total-score',
-    duration: runnerResult.lhr.categories.performance.score * 100,
-    sign: -1,
-    start: 0,
-    unit: '/100'
-  });
+    results.push({
+      phase: prefix + 'total-score',
+      duration: runnerResult.lhr.categories.performance.score * 100,
+      sign: -1,
+      start: 0,
+      unit: '/100'
+    });
+  }
+
+  if (runnerResult.lhr.categories.accessibility) {
+    runnerResult.artifacts.Accessibility?.violations.forEach((violation) => {
+      console.log(
+        chalk.red(
+          `Lighthouse acessibility violation on ${url}: ${violation.id}`
+        )
+      );
+    });
+    results.unshift({
+      phase: prefix + 'accessibility',
+      duration: runnerResult.lhr.categories.accessibility.score * 100,
+      sign: -1,
+      start: 0,
+      unit: '/100'
+    });
+  }
 
   return results;
 }
@@ -114,6 +128,20 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     _raceCancellation: RaceCancellation
   ): Promise<NavigationSample> {
     const lhPresets: { [key: string]: any } = {
+      accessibility: {
+        formFactor: 'desktop',
+        screenEmulation: {
+          mobile: false,
+          width: 1920,
+          height: 8000,
+          deviceScaleFactor: 1
+        },
+        throttling: false,
+        logLevel: 'error',
+        output: 'html',
+        onlyCategories: ['accessibility'],
+        port: this.chrome.port
+      },
       mobile: {
         formFactor: 'mobile',
         logLevel: 'error',
@@ -132,7 +160,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           cpuSlowdownMultiplier: 4
         },
         output: 'html',
-        onlyCategories: ['performance', 'accessibility'],
+        onlyCategories: ['performance'],
         port: this.chrome.port
       },
       desktop: {
@@ -145,7 +173,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         },
         logLevel: 'error',
         output: 'html',
-        onlyCategories: ['performance', 'accessibility'],
+        onlyCategories: ['performance'],
         port: this.chrome.port
       }
     };
