@@ -157,7 +157,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
           requestLatencyMs: 1125,
           downloadThroughputKbps: 700,
           uploadThroughputKbps: 700,
-          cpuSlowdownMultiplier: 4
+          cpuSlowdownMultiplier: 6
         },
         output: 'html',
         onlyCategories: ['performance'],
