@@ -27,11 +27,15 @@ async function runLighthouse(
   const runnerResult = await lighthouse(url, lhSettings);
 
   runnerResult.lhr.categories;
+  const parsedUrl = new URL(url);
+  const host = parsedUrl.host;
+  const path = parsedUrl.pathname;
 
-  const namePrefix = `tracerbench-results/${prefix}${new URL(url).host.replace(
+  const namePrefix = `tracerbench-results/${prefix}${host.replace(
     ':',
     '_'
-  )}`;
+  )}_${path.replace(/\//g, '_')}`;
+
   writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
   writeFileSync(
     `${namePrefix}_performance_profile.json`,
