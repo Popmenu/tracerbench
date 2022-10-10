@@ -5,6 +5,7 @@ import { flags as oclifFlags } from "@oclif/command";
 import { IConfig } from "@oclif/config";
 import {
   Benchmark,
+  compareNetworkActivity,
   createLighthouseBenchmark,
   createTraceNavigationBenchmark,
   Marker,
@@ -244,6 +245,7 @@ export default class Compare extends TBBaseCommand {
       );
     }
     const resultJSONPath = `${this.parsedConfig.tbResultsFolder}/compare.json`;
+    compareNetworkActivity();
 
     writeFileSync(resultJSONPath, JSON.stringify(results));
 

@@ -1,7 +1,8 @@
 import chalk from 'chalk';
+import { execSync } from 'child_process';
 import { launch, LaunchedChrome } from 'chrome-launcher';
 import { writeFileSync } from 'fs';
-import lighthouse from 'lighthouse';
+import lighthouse, { LighthouseResult } from 'lighthouse';
 import { RaceCancellation } from 'race-cancellation';
 
 import {
@@ -13,6 +14,131 @@ import {
   PhaseSample
 } from './metrics/extract-navigation-sample';
 import { Benchmark, BenchmarkSampler } from './run';
+
+interface DownloadsSizesKB {
+  [filename: string]: number[];
+}
+
+const downloadsSizes: {
+  [name: string]: DownloadsSizesKB;
+} = {};
+
+const saveDownloadsSizes = (
+  downloadsSizes: DownloadsSizesKB,
+  path: string
+): void => {
+  const downloads = Object.keys(downloadsSizes);
+
+  downloads.sort((a, b) => a.localeCompare(b));
+
+  const lines = downloads.map((url) => {
+    const averageSize: number =
+      downloadsSizes[url].reduce((partialSum, a) => partialSum + a, 0) /
+      downloadsSizes[url].length;
+
+    return `${url}\n⤷ ${(averageSize / 1024).toFixed(2)} KB. Downloaded ${
+      downloadsSizes[url].length
+    } times`;
+  });
+
+  writeFileSync(path, lines.join('\n') + '\n');
+};
+
+export function compareNetworkActivity(): void {
+  if (process.env.CI) {
+    return;
+  }
+
+  const [controlReport, experimentReport] = Object.keys(downloadsSizes).map(
+    (name) => {
+      const reportFilePath = `${name}_network_activity.txt`;
+      saveDownloadsSizes(downloadsSizes[name], reportFilePath);
+
+      return {
+        path: reportFilePath,
+        totalSize: Object.values(downloadsSizes[name]).reduce(
+          (partialSum, sizes) =>
+            partialSum +
+            sizes.reduce((partialSum, size) => partialSum + size, 0),
+          0
+        )
+      };
+    }
+  );
+
+  const totalSizeDiffKb =
+    (experimentReport.totalSize - controlReport.totalSize) / 1024;
+
+  if (totalSizeDiffKb != 0) {
+    if (totalSizeDiffKb > 0) {
+      console.log(
+        chalk.red(
+          `Total downloads size increased by ${totalSizeDiffKb.toFixed(2)} KB`
+        )
+      );
+    } else {
+      console.log(
+        chalk.green(
+          `Total downloads size decreased by ${-totalSizeDiffKb.toFixed(2)} KB`
+        )
+      );
+    }
+  }
+
+  try {
+    execSync(
+      `git --no-pager  diff --no-index ${controlReport.path} ${experimentReport.path}`,
+      { stdio: 'inherit' }
+    );
+  } catch {
+    // do nothing
+  }
+}
+
+const updateDownloadedSizes = (
+  lighthouseResult: LighthouseResult,
+  namePrefix: string,
+  url: string
+): void => {
+  downloadsSizes[namePrefix] = downloadsSizes[namePrefix] || {};
+  const devtoolsLogs = lighthouseResult.artifacts.devtoolsLogs.defaultPass;
+  devtoolsLogs.forEach((requestWillBeSentEntry) => {
+    if (
+      requestWillBeSentEntry.method === 'Network.requestWillBeSent' &&
+      requestWillBeSentEntry.params.request
+    ) {
+      let requestUrl = requestWillBeSentEntry.params.request.url.replace(
+        url,
+        ''
+      );
+      if (
+        requestUrl === '/graphql' &&
+        requestWillBeSentEntry.params.request.postData
+      ) {
+        const postData = JSON.parse(
+          requestWillBeSentEntry.params.request.postData
+        );
+        if (postData.operationName) {
+          requestUrl =
+            '/graphql?operationName="' + postData.operationName + '"';
+        }
+      }
+      devtoolsLogs.find((loadingFinishedEntry) => {
+        if (
+          loadingFinishedEntry.method === 'Network.loadingFinished' &&
+          loadingFinishedEntry.params.requestId ===
+            requestWillBeSentEntry.params.requestId
+        ) {
+          const size = loadingFinishedEntry.params.encodedDataLength;
+          if (!downloadsSizes[namePrefix][requestUrl]) {
+            downloadsSizes[namePrefix][requestUrl] = [];
+          }
+          if (size) downloadsSizes[namePrefix][requestUrl].push(size);
+        }
+      });
+    }
+  });
+};
 
 // Read console errors whitelist from environement variable.
 const allowedConsoleErrors: string[] = (
@@ -41,6 +167,8 @@ async function runLighthouse(
     `${namePrefix}_performance_profile.json`,
     JSON.stringify(runnerResult.artifacts)
   );
+  updateDownloadedSizes(runnerResult, namePrefix, url);
+
   if (runnerResult.lhr.runtimeError) {
     throw new Error(
       `Tracerbench encountered runtime error when running ${url}: ${JSON.stringify(

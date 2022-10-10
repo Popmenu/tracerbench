@@ -196,7 +196,7 @@ declare module 'lighthouse' {
     level: string;
     text: string;
   }
-  interface LighthouseResult {
+  export interface LighthouseResult {
     lhr: LighthouseReport;
     artifacts: {
       ConsoleMessages?: [ConsoleMessage];
@@ -206,6 +206,22 @@ declare module 'lighthouse' {
             id: string;
           }
         ];
+      };
+      devtoolsLogs: {
+        defaultPass: {
+          method: string;
+          params: {
+            requestId: string;
+            encodedDataLength?: number;
+            response?: {
+              url: string;
+            };
+            request?: {
+              url: string;
+              postData?: string;
+            };
+          };
+        }[];
       };
     };
     report: string;
@@ -226,5 +242,5 @@ declare module 'lighthouse' {
     Gatherer: NotYetTyped;
   };
 
-  export = lighthouse;
+  export default lighthouse;
 }
