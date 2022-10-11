@@ -107,8 +107,10 @@ const updateDownloadedSizes = (
       requestWillBeSentEntry.method === 'Network.requestWillBeSent' &&
       requestWillBeSentEntry.params.request
     ) {
+      const parsedPageUrl = new URL(url);
+
       let requestUrl = requestWillBeSentEntry.params.request.url.replace(
-        url,
+        parsedPageUrl.origin,
         ''
       );
       if (
