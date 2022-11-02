@@ -184,7 +184,7 @@ async function runLighthouse(
     if (
       message.level === 'error' &&
       !allowedConsoleErrors.some((allowedError) =>
-        message.text.includes(allowedError)
+        JSON.stringify(message).includes(allowedError)
       )
     ) {
       throw new Error(
