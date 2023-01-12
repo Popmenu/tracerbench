@@ -199,6 +199,20 @@ declare module 'lighthouse' {
   export interface LighthouseResult {
     lhr: LighthouseReport;
     artifacts: {
+      traces: {
+        defaultPass: {
+          traceEvents: [
+            {
+              args: {
+                data: {
+                  startTime: number;
+                };
+              };
+              name: string;
+            }
+          ];
+        };
+      };
       ConsoleMessages?: [ConsoleMessage];
       Accessibility?: {
         violations: [

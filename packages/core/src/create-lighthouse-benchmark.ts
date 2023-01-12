@@ -142,6 +142,31 @@ const updateDownloadedSizes = (
   });
 };
 
+function extractPerformanceMarkerTime(
+  result: LighthouseResult,
+  markerName: string
+): number | null {
+  const traceEvents = result.artifacts.traces.defaultPass.traceEvents;
+  const event = traceEvents.find((event) => event.name === markerName);
+  if (!event) {
+    return null;
+  }
+  return event.args.data.startTime;
+}
+
+function extractPerformanceDuration(
+  result: LighthouseResult,
+  startMarker: string,
+  endMarker: string
+): number | null {
+  const startTime = extractPerformanceMarkerTime(result, startMarker);
+  const endTime = extractPerformanceMarkerTime(result, endMarker);
+  if (startTime === null || endTime === null) {
+    return null;
+  }
+  return endTime - startTime;
+}
+
 // Read console errors whitelist from environement variable.
 const allowedConsoleErrors: string[] = (
   process.env.TRACERBENCH_ALLOWED_CONSOLE_ERRORS || ''
@@ -216,6 +241,35 @@ async function runLighthouse(
       sign: 1,
       unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
     }));
+
+    const popmenuHydrationDuration = extractPerformanceDuration(
+      runnerResult,
+      'popmenu-hydration-start',
+      'popmenu-hydration-end'
+    );
+    if (popmenuHydrationDuration != null) {
+      results.push({
+        phase: prefix + 'hydration',
+        duration: popmenuHydrationDuration * 1000 * 6,
+        sign: 1,
+        start: 0,
+        unit: 'ms'
+      });
+    }
+
+    const popmenuHydrationStart = extractPerformanceMarkerTime(
+      runnerResult,
+      'popmenu-hydration-start'
+    );
+    if (popmenuHydrationStart != null) {
+      results.push({
+        phase: prefix + 'hydration-start',
+        duration: popmenuHydrationStart * 1000 * 6,
+        sign: 1,
+        start: 0,
+        unit: 'ms'
+      });
+    }
 
     results.push({
       phase: prefix + 'total-score',
