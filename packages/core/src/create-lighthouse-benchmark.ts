@@ -1,9 +1,9 @@
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import { execSync } from 'child_process';
 import { launch, LaunchedChrome } from 'chrome-launcher';
 import { writeFileSync } from 'fs';
-import lighthouse, { LighthouseResult } from 'lighthouse';
-import { RaceCancellation } from 'race-cancellation';
+import type { LighthouseResult } from 'lighthouse';
+import type { RaceCancellation } from 'race-cancellation';
 
 import {
   Marker,
@@ -177,7 +177,9 @@ async function runLighthouse(
   url: string,
   lhSettings: any
 ): Promise<PhaseSample[]> {
-  const runnerResult = await lighthouse(url, lhSettings);
+  // TODO: migrate the project to ESM and use import() instead of eval
+  const lighthouse = (await eval("import('lighthouse')")).default;
+  const runnerResult: LighthouseResult = await lighthouse(url, lhSettings);
 
   runnerResult.lhr.categories;
   const parsedUrl = new URL(url);
