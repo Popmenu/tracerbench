@@ -223,5 +223,5 @@ export interface PhaseSample {
   duration: number;
 
   sign: 1 | -1;
-  unit: 'ms' | '/100';
+  unit: string;
 }

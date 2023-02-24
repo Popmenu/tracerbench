@@ -31,9 +31,11 @@
     </div>
     <div class="row">
       <div class="col">
-        <div style="width: 1080px; height: 720px;">
-          <canvas id="all-in-one-chart"></canvas>
-        </div>
+          {{#each cumulativeCharts as |cumulativeChart|}}
+          <div style="width: 1080px; height: 320px;">
+              <canvas id="cumulative-{{cumulativeChart.unit}}-chart"></canvas>
+          </div>
+          {{/each}}
       </div>
     </div>
 
@@ -85,11 +87,11 @@
   {{/each}}
 
   <script>
-    const ctx = document.getElementById("all-in-one-chart").getContext("2d");
-    window.myBar = new Chart(ctx, {
+    const createChart = (unit, experimentData, controlData, labels) => {
+    new Chart(document.getElementById(`cumulative-${unit}-chart`).getContext("2d"), {
       type: 'boxplot',
       data: {
-        labels: {{{stringify cumulativeData.categories}}},
+        labels,
         datasets: [
           {
             label: '{{reportTitles.servers.[0].name}}',
@@ -97,19 +99,19 @@
             backgroundColor: 'rgba(199, 241, 106, 0.50)',
             borderWidth: 1,
             itemBackgroundColor: '#1884E4',
-            data: {{{stringify cumulativeData.controlData}}}
+            data: controlData
           },{
             label: '{{reportTitles.servers.[1].name}}',
             borderColor: '#0A2D46',
             backgroundColor: 'rgba(56, 210, 211, 0.50)',
             borderWidth: 1,
             itemBackgroundColor: '#1884E4',
-            data: {{{stringify cumulativeData.experimentData}}}
+            data: experimentData
           }
         ]
       },
       options: {
-        aspectRatio: 1.5,
+        aspectRatio: 3.375,
         devicePixelRatio: 2.5,
         legend: {
           position: 'top',
@@ -122,16 +124,22 @@
           yAxes: [{
             ticks: {
               callback: function (value) {
-                // Maximum score 100/100 is as high as 10000ms.
-                const SCORE_TO_MS_FACTOR = 10000 / 100;
-                return [`${value} ms`, `${value / SCORE_TO_MS_FACTOR}/100  `];
+                return [`${value} ${unit}`];
               }
             }
           }]
         }
       }
     });
-
+    }
+  {{#each cumulativeCharts as |cumulativeData|}}
+    createChart(
+      '{{cumulativeData.unit}}',
+      {{{stringify cumulativeData.experimentData}}},
+      {{{stringify cumulativeData.controlData}}},
+      {{{stringify cumulativeData.categories}}},
+    );
+  {{/each}}
   </script>
 </body>
 

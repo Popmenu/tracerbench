@@ -99,7 +99,8 @@ const updateDownloadedSizes = (
   lighthouseResult: LighthouseResult,
   namePrefix: string,
   url: string
-): void => {
+): number => {
+  let totalSizeBytes = 0;
   downloadsSizes[namePrefix] = downloadsSizes[namePrefix] || {};
   const devtoolsLogs = lighthouseResult.artifacts.devtoolsLogs.defaultPass;
   devtoolsLogs.forEach((requestWillBeSentEntry) => {
@@ -135,12 +136,23 @@ const updateDownloadedSizes = (
           if (!downloadsSizes[namePrefix][requestUrl]) {
             downloadsSizes[namePrefix][requestUrl] = [];
           }
-          if (size) downloadsSizes[namePrefix][requestUrl].push(size);
+          if (size) {
+            downloadsSizes[namePrefix][requestUrl].push(size);
+            totalSizeBytes += size;
+          }
         }
       });
     }
   });
+
+  return totalSizeBytes;
 };
+
+// Ligthouse applies some scaling factor to performance profiles.
+// All performance.mark and performance.measure calls should be multiplied by this factor.
+// Unfortunatly it's not exposed in the Lighthouse API.
+// This is a manually determined value roughly representing the correct ratio.
+const LIGHTHOUSE_SLOWDOWN_MULTIPLYER = 15;
 
 function extractPerformanceMarkerTime(
   result: LighthouseResult,
@@ -151,7 +163,7 @@ function extractPerformanceMarkerTime(
   if (!event) {
     return null;
   }
-  return event.args.data.startTime;
+  return event.args.data.startTime * LIGHTHOUSE_SLOWDOWN_MULTIPLYER;
 }
 
 function extractPerformanceDuration(
@@ -196,7 +208,7 @@ async function runLighthouse(
     `${namePrefix}_performance_profile.json`,
     JSON.stringify(runnerResult.artifacts)
   );
-  updateDownloadedSizes(runnerResult, namePrefix, url);
+  const totalSizeBytes = updateDownloadedSizes(runnerResult, namePrefix, url);
 
   if (runnerResult.lhr.runtimeError) {
     throw new Error(
@@ -231,7 +243,6 @@ async function runLighthouse(
       'first-contentful-paint',
       'speed-index',
       'largest-contentful-paint',
-      'interactive',
       'total-blocking-time',
       'cumulative-layout-shift'
     ].map((phase) => ({
@@ -240,6 +251,7 @@ async function runLighthouse(
         runnerResult.lhr.audits[phase].numericValue *
         (phase === 'cumulative-layout-shift' ? 100 : 1000),
       start: 0,
+      addToChart: true,
       sign: 1,
       unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
     }));
@@ -252,7 +264,7 @@ async function runLighthouse(
     if (popmenuHydrationDuration != null) {
       results.push({
         phase: prefix + 'hydration',
-        duration: popmenuHydrationDuration * 1000 * 6,
+        duration: popmenuHydrationDuration * 1000,
         sign: 1,
         start: 0,
         unit: 'ms'
@@ -266,12 +278,20 @@ async function runLighthouse(
     if (popmenuHydrationStart != null) {
       results.push({
         phase: prefix + 'hydration-start',
-        duration: popmenuHydrationStart * 1000 * 6,
+        duration: popmenuHydrationStart * 1000,
         sign: 1,
         start: 0,
         unit: 'ms'
       });
     }
+
+    results.push({
+      phase: prefix + 'downloads',
+      duration: totalSizeBytes / 1024,
+      sign: 1,
+      start: 0,
+      unit: 'KB'
+    });
 
     results.push({
       phase: prefix + 'total-score',

@@ -20,7 +20,7 @@ export type Sample = {
     start: number;
     duration: number;
     sign: 1 | -1;
-    unit: "ms" | "/100";
+    unit: string;
   }>;
 };
 
@@ -57,7 +57,7 @@ export interface HTMLSectionRenderData {
   ciMax: number;
   hlDiff: number;
   phase: string;
-  unit: "ms" | "/100";
+  unit: string;
   sign: -1 | 1;
   identifierHash: string;
   frequencyHash: string;
@@ -71,16 +71,17 @@ export interface HTMLSectionRenderData {
 }
 
 type ValuesByPhase = {
-  [key: string]: { values: number[]; sign: -1 | 1; unit: "ms" | "/100" };
+  [key: string]: { values: number[]; sign: -1 | 1; unit: string };
 };
 
 type ValueGen = {
   start: number;
   duration: number;
-  unit: "ms" | "/100";
+  unit: string;
 };
 
-type CumulativeData = {
+type CumulativeChartData = {
+  unit: string;
   categories: string[][];
   controlData: number[][];
   experimentData: number[][];
@@ -93,7 +94,7 @@ export class GenerateStats {
   reportTitles: ParsedTitleConfigs;
   durationSection: HTMLSectionRenderData;
   subPhaseSections: HTMLSectionRenderData[];
-  cumulativeData: CumulativeData;
+  cumulativeCharts: CumulativeChartData[];
   constructor(
     controlData: ITracerBenchTraceResult,
     experimentData: ITracerBenchTraceResult,
@@ -111,7 +112,7 @@ export class GenerateStats {
     this.durationSection = durationSection;
     this.subPhaseSections = subPhaseSections;
 
-    this.cumulativeData = this.bucketCumulative(
+    this.cumulativeCharts = this.bucketCumulative(
       this.controlData.samples,
       this.experimentData.samples
     );
@@ -207,7 +208,7 @@ export class GenerateStats {
     controlValues: number[],
     experimentValues: number[],
     phaseName: string,
-    unit: "ms" | "/100",
+    unit: string,
     sign: -1 | 1
   ): HTMLSectionRenderData {
     // all stats will be converted to milliseconds and rounded to tenths
@@ -217,7 +218,9 @@ export class GenerateStats {
         experiment: experimentValues,
         name: phaseName,
       },
-      unit === "ms" ? roundFloatAndConvertMicrosecondsToMS : (a: number) => a
+      unit === "ms"
+        ? roundFloatAndConvertMicrosecondsToMS
+        : (a: number) => Math.round(a)
     );
 
     const estimatorIsSig = Math.abs(stats.estimator) >= 1 ? true : false;
@@ -276,15 +279,13 @@ export class GenerateStats {
   private bucketCumulative(
     controlDataSamples: Sample[],
     experimentDataSamples: Sample[]
-  ): CumulativeData {
+  ): CumulativeChartData[] {
     // round and convert from micro to milliseconds
     const cumulativeValueFunc = (a: ValueGen): number => {
       if (a.unit === "ms") {
         return Math.round(convertMicrosecondsToMS(a.start + a.duration));
       } else {
-        // Maximum score 100/100 is as high as 10000ms.
-        const SCORE_TO_MS_FACTOR = 10000 / 100;
-        return a.duration * SCORE_TO_MS_FACTOR;
+        return Math.round(a.start + a.duration);
       }
     };
 
@@ -300,14 +301,29 @@ export class GenerateStats {
       (k) => k !== "duration"
     );
 
-    return {
-      categories: phases.map((k) => [
-        k,
-        valuesByPhaseControl[k].unit,
-        valuesByPhaseControl[k].sign > 0 ? "lower=better" : "higher=better",
-      ]),
-      controlData: phases.map((k) => valuesByPhaseControl[k].values),
-      experimentData: phases.map((k) => valuesByPhaseExperiment[k].values),
-    };
+    const units = new Set<string>();
+    phases.forEach((phase) => {
+      const unit = valuesByPhaseControl[phase].unit;
+      units.add(unit);
+    });
+
+    const cumulativeCharts: CumulativeChartData[] = [];
+    units.forEach((unit) => {
+      const filteredPhases = phases.filter(
+        (phase) => valuesByPhaseControl[phase].unit === unit
+      );
+      cumulativeCharts.push({
+        unit,
+        categories: filteredPhases.map((k) => [
+          k,
+          valuesByPhaseControl[k].sign > 0 ? "lower=better" : "higher=better",
+        ]),
+        controlData: filteredPhases.map((k) => valuesByPhaseControl[k].values),
+        experimentData: filteredPhases.map(
+          (k) => valuesByPhaseExperiment[k].values
+        ),
+      });
+    });
+    return cumulativeCharts;
   }
 }
