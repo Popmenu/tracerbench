@@ -426,7 +426,7 @@ export default function createLighthouseBenchmark(
   return {
     group,
     async setup(_raceCancellation) {
-      const chrome = await launch({ chromeFlags: ['--headless'] });
+      const chrome = await launch({ chromeFlags: ['--headless', '--ignore-certificate-errors'] });
       return new LighthouseSampler(chrome, url, options);
     }
   };
