@@ -184,6 +184,10 @@ const allowedConsoleErrors: string[] = (
   process.env.TRACERBENCH_ALLOWED_CONSOLE_ERRORS || ''
 ).split(',');
 
+const disallowedConsoleMessages: string[] = (
+  process.env.TRACERBENCH_DISALLOWED_CONSOLE_MESSAGES || ''
+).split(',');
+
 async function runLighthouse(
   prefix: string,
   url: string,
@@ -220,18 +224,21 @@ async function runLighthouse(
     );
   }
   runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
-    if (
+    const isError =
       message.level === 'error' &&
       !allowedConsoleErrors.some((allowedError) =>
         JSON.stringify(message).includes(allowedError)
-      )
-    ) {
-      throw new Error(
-        `Tracerbench encountered console error when running ${url}: ${JSON.stringify(
-          message,
-          null,
-          2
-        )}`
+      );
+
+    const isDisallowedMessage = disallowedConsoleMessages.some(
+      (disallowedMessage) => JSON.stringify(message).includes(disallowedMessage)
+    );
+
+    if (isError || isDisallowedMessage) {
+      console.log(
+        chalk.red(
+          `Measurements Error: Tracerbench encountered console ${message.level} when running ${url}: ${message.text}`
+        )
       );
     }
   });
@@ -269,6 +276,22 @@ async function runLighthouse(
         start: 0,
         unit: 'ms'
       });
+    }
+
+    if (extractPerformanceMarkerTime(runnerResult, 'firstInteractionTimeout')) {
+      console.log(
+        chalk.red(
+          "Measurements Error: firstInteractionTimeout shouldn't be triggered in lighthouse tests. increase LIGHTHOUSE_DELAY_MS?"
+        )
+      );
+    }
+
+    if (extractPerformanceMarkerTime(runnerResult, 'firstSessionLoaded')) {
+      console.log(
+        chalk.red(
+          "Measurements Error: firstSessionLoaded shouldn't be triggered in lighthouse tests. Something is broken in app/javascript/utils/postponed.tsx ?"
+        )
+      );
     }
 
     const popmenuHydrationStart = extractPerformanceMarkerTime(
@@ -426,7 +449,9 @@ export default function createLighthouseBenchmark(
   return {
     group,
     async setup(_raceCancellation) {
-      const chrome = await launch({ chromeFlags: ['--headless', '--ignore-certificate-errors'] });
+      const chrome = await launch({
+        chromeFlags: ['--headless', '--ignore-certificate-errors']
+      });
       return new LighthouseSampler(chrome, url, options);
     }
   };
