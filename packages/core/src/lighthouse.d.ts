@@ -195,6 +195,7 @@ declare module 'lighthouse' {
   interface ConsoleMessage {
     level: string;
     text: string;
+    url: string;
   }
   export interface LighthouseResult {
     lhr: LighthouseReport;

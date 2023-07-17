@@ -180,13 +180,10 @@ function extractPerformanceDuration(
 }
 
 // Read console errors whitelist from environement variable.
-const allowedConsoleErrors: string[] = (
-  process.env.TRACERBENCH_ALLOWED_CONSOLE_ERRORS || ''
-).split(',');
-
-const disallowedConsoleMessages: string[] = (
-  process.env.TRACERBENCH_DISALLOWED_CONSOLE_MESSAGES || ''
-).split(',');
+const allowedConsoleErrors: string[] = process.env
+  .TRACERBENCH_ALLOWED_CONSOLE_ERRORS
+  ? process.env.TRACERBENCH_ALLOWED_CONSOLE_ERRORS.split(',')
+  : [];
 
 async function runLighthouse(
   prefix: string,
@@ -224,20 +221,14 @@ async function runLighthouse(
     );
   }
   runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
-    const isError =
-      message.level === 'error' &&
+    if (
       !allowedConsoleErrors.some((allowedError) =>
         JSON.stringify(message).includes(allowedError)
-      );
-
-    const isDisallowedMessage = disallowedConsoleMessages.some(
-      (disallowedMessage) => JSON.stringify(message).includes(disallowedMessage)
-    );
-
-    if (isError || isDisallowedMessage) {
+      )
+    ) {
       console.log(
         chalk.red(
-          `Measurements Error: Tracerbench encountered console ${message.level} when running ${url}: ${message.text}`
+          `Measurements Error: console.${message.level}: ${message.text} ${message.url} TESTED PAGE: ${url}`
         )
       );
     }
@@ -278,18 +269,13 @@ async function runLighthouse(
       });
     }
 
-    if (extractPerformanceMarkerTime(runnerResult, 'firstInteractionTimeout')) {
+    if (
+      extractPerformanceMarkerTime(runnerResult, 'firstInteractionTimeout') ||
+      extractPerformanceMarkerTime(runnerResult, 'firstSessionLoaded')
+    ) {
       console.log(
         chalk.red(
-          "Measurements Error: firstInteractionTimeout shouldn't be triggered in lighthouse tests. increase LIGHTHOUSE_DELAY_MS?"
-        )
-      );
-    }
-
-    if (extractPerformanceMarkerTime(runnerResult, 'firstSessionLoaded')) {
-      console.log(
-        chalk.red(
-          "Measurements Error: firstSessionLoaded shouldn't be triggered in lighthouse tests. Something is broken in app/javascript/utils/postponed.tsx ?"
+          `Measurements Error: firstInteractionTimeout and firstSessionLoaded shouldn't be triggered in lighthouse tests. increase LIGHTHOUSE_DELAY_MS? ${url}`
         )
       );
     }
