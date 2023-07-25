@@ -103,7 +103,7 @@ const updateDownloadedSizes = (
   let totalSizeBytes = 0;
   downloadsSizes[namePrefix] = downloadsSizes[namePrefix] || {};
   const devtoolsLogs = lighthouseResult.artifacts.devtoolsLogs.defaultPass;
-  devtoolsLogs.forEach((requestWillBeSentEntry) => {
+  devtoolsLogs?.forEach((requestWillBeSentEntry) => {
     if (
       requestWillBeSentEntry.method === 'Network.requestWillBeSent' &&
       requestWillBeSentEntry.params.request

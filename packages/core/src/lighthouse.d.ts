@@ -223,7 +223,7 @@ declare module 'lighthouse' {
         ];
       };
       devtoolsLogs: {
-        defaultPass: {
+        defaultPass?: {
           method: string;
           params: {
             requestId: string;
