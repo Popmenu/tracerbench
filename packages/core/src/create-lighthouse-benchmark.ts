@@ -269,17 +269,6 @@ async function runLighthouse(
       });
     }
 
-    if (
-      extractPerformanceMarkerTime(runnerResult, 'firstInteractionTimeout') ||
-      extractPerformanceMarkerTime(runnerResult, 'firstSessionLoaded')
-    ) {
-      console.log(
-        chalk.red(
-          `Measurements Error: firstInteractionTimeout and firstSessionLoaded shouldn't be triggered in lighthouse tests. increase LIGHTHOUSE_DELAY_MS? ${url}`
-        )
-      );
-    }
-
     const popmenuHydrationStart = extractPerformanceMarkerTime(
       runnerResult,
       'popmenu-hydration-start'
