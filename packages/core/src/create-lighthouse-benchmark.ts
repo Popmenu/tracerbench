@@ -242,7 +242,8 @@ async function runLighthouse(
       'speed-index',
       'largest-contentful-paint',
       'total-blocking-time',
-      'cumulative-layout-shift'
+      'cumulative-layout-shift',
+      'server-response-time'
     ].map((phase) => ({
       phase: prefix + phase,
       duration:
@@ -301,7 +302,7 @@ async function runLighthouse(
   }
 
   if (runnerResult.lhr.categories.accessibility) {
-    runnerResult.artifacts.Accessibility?.violations.forEach((violation) => {
+    runnerResult.artifacts.Accessibility?.violations?.forEach((violation) => {
       console.log(
         chalk.red(
           `Lighthouse acessibility violation on ${url}: ${violation.id}`
