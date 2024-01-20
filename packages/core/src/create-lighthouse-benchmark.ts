@@ -422,11 +422,15 @@ export default function createLighthouseBenchmark(
   _markers: Marker[],
   options: Partial<NavigationBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
+  const chromeFlags = ['--headless', '--ignore-certificate-errors'];
+  if (process.env.SOCKS_PORT) {
+    chromeFlags.push(`--proxy-server=socks5://0.0.0.0:${process.env.SOCKS_PORT}`);
+  }
   return {
     group,
     async setup(_raceCancellation) {
       const chrome = await launch({
-        chromeFlags: ['--headless', '--ignore-certificate-errors']
+        chromeFlags,
       });
       return new LighthouseSampler(chrome, url, options);
     }
