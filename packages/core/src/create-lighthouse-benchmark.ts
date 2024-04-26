@@ -45,10 +45,6 @@ const saveDownloadsSizes = (
 };
 
 export function compareNetworkActivity(): void {
-  if (process.env.CI) {
-    return;
-  }
-
   const [controlReport, experimentReport] = Object.keys(downloadsSizes).map(
     (name) => {
       const reportFilePath = `${name}_network_activity.txt`;
