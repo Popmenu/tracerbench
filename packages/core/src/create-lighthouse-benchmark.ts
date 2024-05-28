@@ -418,7 +418,8 @@ export default function createLighthouseBenchmark(
   _markers: Marker[],
   options: Partial<NavigationBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
-  const chromeFlags = ['--headless', '--ignore-certificate-errors'];
+  // The --disable-dev-shm-usage flag is needed to prevent Chrome from throwing PROTOCOL_TIMEOUT error in docker container.
+  const chromeFlags = ['--disable-dev-shm-usage', '--headless', '--ignore-certificate-errors'];
   if (process.env.SOCKS_PORT) {
     chromeFlags.push(`--proxy-server=socks5://0.0.0.0:${process.env.SOCKS_PORT}`);
   }
