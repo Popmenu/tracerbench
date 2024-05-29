@@ -420,8 +420,8 @@ export default function createLighthouseBenchmark(
 ): Benchmark<NavigationSample> {
   // The --disable-dev-shm-usage flag is needed to prevent Chrome from throwing PROTOCOL_TIMEOUT error in docker container.
   const chromeFlags = ['--disable-dev-shm-usage', '--headless', '--ignore-certificate-errors'];
-  if (process.env.SOCKS_PORT) {
-    chromeFlags.push(`--proxy-server=socks5://0.0.0.0:${process.env.SOCKS_PORT}`);
+  if (process.env.TRACERBENCH_PROXY_URL) {
+    chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
   }
   return {
     group,
