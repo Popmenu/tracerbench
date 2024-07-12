@@ -316,6 +316,7 @@ async function runLighthouse(
 
   return results;
 }
+
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private chrome: LaunchedChrome,
@@ -325,6 +326,30 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 
   async dispose(): Promise<void> {
     await this.chrome.kill();
+  }
+
+  getMobileSettings({ width, height }: { width: number; height: number }): any {
+    return {
+      formFactor: 'mobile',
+      logLevel: 'error',
+      screenEmulation: {
+        mobile: true,
+        deviceScaleFactor: 3,
+        width,
+        height
+      },
+      throttling: {
+        rttMs: 300,
+        throughputKbps: 700,
+        requestLatencyMs: 1125,
+        downloadThroughputKbps: 700,
+        uploadThroughputKbps: 700,
+        cpuSlowdownMultiplier: 6
+      },
+      output: 'html',
+      onlyCategories: ['performance'],
+      port: this.chrome.port
+    };
   }
 
   async sample(
@@ -347,27 +372,8 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         onlyCategories: ['accessibility'],
         port: this.chrome.port
       },
-      mobile: {
-        formFactor: 'mobile',
-        logLevel: 'error',
-        screenEmulation: {
-          mobile: true,
-          width: 375,
-          height: 812,
-          deviceScaleFactor: 3
-        },
-        throttling: {
-          rttMs: 300,
-          throughputKbps: 700,
-          requestLatencyMs: 1125,
-          downloadThroughputKbps: 700,
-          uploadThroughputKbps: 700,
-          cpuSlowdownMultiplier: 6
-        },
-        output: 'html',
-        onlyCategories: ['performance'],
-        port: this.chrome.port
-      },
+      mobile: this.getMobileSettings({ width: 375, height: 812 }),
+      landscapeMobile: this.getMobileSettings({ width: 812, height: 375 }),
       desktop: {
         formFactor: 'desktop',
         screenEmulation: {
