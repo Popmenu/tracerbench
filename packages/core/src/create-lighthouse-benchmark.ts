@@ -330,6 +330,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
 
   getMobileSettings({ width, height }: { width: number; height: number }): any {
     return {
+      extends: 'lighthouse:default',
       formFactor: 'mobile',
       logLevel: 'error',
       screenEmulation: {
@@ -357,8 +358,10 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     _isTrial: boolean,
     _raceCancellation: RaceCancellation
   ): Promise<NavigationSample> {
+    const defaultDesktopSettings = (await eval("import('lighthouse')")).desktopSettings.settings;
     const lhPresets: { [key: string]: any } = {
       accessibility: {
+        ...defaultDesktopSettings,
         formFactor: 'desktop',
         screenEmulation: {
           mobile: false,
@@ -375,6 +378,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       mobile: this.getMobileSettings({ width: 375, height: 812 }),
       landscapeMobile: this.getMobileSettings({ width: 812, height: 375 }),
       desktop: {
+        ...defaultDesktopSettings,
         formFactor: 'desktop',
         screenEmulation: {
           mobile: false,
