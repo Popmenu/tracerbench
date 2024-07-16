@@ -328,7 +328,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
     await this.chrome.kill();
   }
 
-  async getMobileSettings({ width, height }: { width: number; height: number }): any {
+  async getMobileSettings({ width, height }: { width: number; height: number }): Promise<any> {
     const defaultMobileSettings = (await eval("import('lighthouse')")).defaultConfig.settings;
     return {
       ...defaultMobileSettings,
