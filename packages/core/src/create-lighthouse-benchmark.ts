@@ -377,7 +377,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         port: this.chrome.port
       },
       mobile: await this.getMobileSettings({ width: 375, height: 812 }),
-      landscapeMobile: await this.getMobileSettings({ width: 812, height: 375 }),
+      landscapeMobile: await this.getMobileSettings({ width: 980, height: 452 }),
       desktop: {
         ...defaultDesktopSettings,
         formFactor: 'desktop',
