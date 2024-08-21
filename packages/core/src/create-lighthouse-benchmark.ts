@@ -203,7 +203,7 @@ async function runLighthouse(
   writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
   writeFileSync(
     `${namePrefix}_performance_profile.json`,
-    JSON.stringify(runnerResult.artifacts)
+    JSON.stringify(runnerResult.artifacts.traces.defaultPass)
   );
   const totalSizeBytes = updateDownloadedSizes(runnerResult, namePrefix, url);
 
