@@ -201,10 +201,13 @@ async function runLighthouse(
   )}_${path.replace(/\//g, '_')}`;
 
   writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
-  writeFileSync(
-    `${namePrefix}_performance_profile.json`,
-    JSON.stringify(runnerResult.artifacts.traces.defaultPass)
-  );
+  if (runnerResult.artifacts?.traces?.defaultPass) {
+    writeFileSync(
+      `${namePrefix}_performance_profile.json`,
+      JSON.stringify(runnerResult.artifacts.traces.defaultPass)
+    );
+  }
+
   const totalSizeBytes = updateDownloadedSizes(runnerResult, namePrefix, url);
 
   if (runnerResult.lhr.runtimeError) {
