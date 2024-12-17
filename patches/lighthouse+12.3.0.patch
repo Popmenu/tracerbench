@@ -1,0 +1,22 @@
+diff --git a/node_modules/lighthouse/.vscode/settings.json b/node_modules/lighthouse/.vscode/settings.json
+new file mode 100644
+index 0000000..0ee1d2f
+--- /dev/null
++++ b/node_modules/lighthouse/.vscode/settings.json
+@@ -0,0 +1,3 @@
++{
++  "window.title": "${folderPath}${separator}[Branch: lighthouse12]"
++}
+diff --git a/node_modules/lighthouse/types/artifacts.d.ts b/node_modules/lighthouse/types/artifacts.d.ts
+index 19ae925..e37b9c4 100644
+--- a/node_modules/lighthouse/types/artifacts.d.ts
++++ b/node_modules/lighthouse/types/artifacts.d.ts
+@@ -12,7 +12,7 @@ import {LayoutShiftRootCausesData} from '@paulirish/trace_engine/models/trace/ro
+ import {parseManifest} from '../core/lib/manifest-parser.js';
+ import {LighthouseError} from '../core/lib/lh-error.js';
+ import {NetworkRequest as _NetworkRequest} from '../core/lib/network-request.js';
+-import speedline from 'speedline-core';
++import * as speedline from 'speedline-core';
+ import * as CDTSourceMap from '../core/lib/cdt/generated/SourceMap.js';
+ import {ArbitraryEqualityMap} from '../core/lib/arbitrary-equality-map.js';
+ import type { TaskNode as _TaskNode } from '../core/lib/tracehouse/main-thread-tasks.js';

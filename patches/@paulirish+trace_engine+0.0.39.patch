@@ -1,0 +1,7 @@
+diff --git a/node_modules/@paulirish/trace_engine/third_party/third-party-web/third-party-web.d.ts b/node_modules/@paulirish/trace_engine/third_party/third-party-web/third-party-web.d.ts
+index fc1d83d..010d843 100644
+--- a/node_modules/@paulirish/trace_engine/third_party/third-party-web/third-party-web.d.ts
++++ b/node_modules/@paulirish/trace_engine/third_party/third-party-web/third-party-web.d.ts
+@@ -1 +1 @@
+-import ThirdPartyWeb from 'third-party-web'; export {ThirdPartyWeb};
++import * as ThirdPartyWeb from 'third-party-web'; export {ThirdPartyWeb};

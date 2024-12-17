@@ -50,7 +50,7 @@
     "devtools-protocol": "^0.0.975963",
     "fs-extra": "^10.0.0",
     "handlebars": "^4.7.7",
-    "lighthouse": "^10.3.0",
+    "lighthouse": "^12.3.0",
     "lodash.clonedeep": "^4.5.0",
     "race-cancellation": "^0.4.1",
     "silent-error": "^1.1.1",
