@@ -98,7 +98,8 @@ const updateDownloadedSizes = (
 ): number => {
   let totalSizeBytes = 0;
   downloadsSizes[namePrefix] = downloadsSizes[namePrefix] || {};
-  const devtoolsLogs = lighthouseResult.artifacts.devtoolsLogs.defaultPass;
+  const devtoolsLogs = lighthouseResult.artifacts.devtoolsLogs?.defaultPass;
+
   devtoolsLogs?.forEach((requestWillBeSentEntry) => {
     if (
       requestWillBeSentEntry.method === 'Network.requestWillBeSent' &&
@@ -334,7 +335,7 @@ async function runLighthouse(
     } catch (error) {
       lastError = error as Error;
       if (attempt < retries) {
-        console.log(chalk.red(lastError.message));
+        console.log(chalk.red(lastError.message), lastError.stack);
         console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
