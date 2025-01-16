@@ -470,7 +470,13 @@ export default function createLighthouseBenchmark(
   _markers: Marker[],
   options: Partial<NavigationBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
-  const chromeFlags = ['--headless', '--ignore-certificate-errors'];
+  const chromeFlags = [
+    '--headless',
+    // For Image Proxy
+    '--ignore-certificate-errors',
+    // There is no GPU on CI
+    '--enable-unsafe-swiftshader'
+  ];
   if (process.env.SOCKS_PORT) {
     chromeFlags.push(
       `--proxy-server=socks5://0.0.0.0:${process.env.SOCKS_PORT}`
