@@ -475,12 +475,13 @@ export default function createLighthouseBenchmark(
     // For Image Proxy
     '--ignore-certificate-errors',
     // There is no GPU on CI
-    '--enable-unsafe-swiftshader'
+    '--enable-unsafe-swiftshader',
+    // The --disable-dev-shm-usage flag is needed to prevent Chrome from throwing PROTOCOL_TIMEOUT error in docker container.
+    '--disable-dev-shm-usage',
   ];
-  if (process.env.SOCKS_PORT) {
-    chromeFlags.push(
-      `--proxy-server=socks5://0.0.0.0:${process.env.SOCKS_PORT}`
-    );
+
+  if (process.env.TRACERBENCH_PROXY_URL) {
+    chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
   }
   return {
     group,
