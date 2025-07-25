@@ -1,9 +1,12 @@
 import * as chalk from 'chalk';
 import { execSync } from 'child_process';
 import { launch, LaunchedChrome } from 'chrome-launcher';
-import { writeFileSync } from 'fs';
 import type { LighthouseResult } from 'lighthouse';
 import type { RaceCancellation } from 'race-cancellation';
+import { writeFileSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   Marker,
@@ -351,11 +354,13 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
   constructor(
     private chrome: LaunchedChrome,
     private url: string,
-    private options: Partial<NavigationBenchmarkOptions>
+    private options: Partial<NavigationBenchmarkOptions>,
+    private userDataDir: string
   ) {}
 
   async dispose(): Promise<void> {
     await this.chrome.kill();
+    await rm(this.userDataDir, { recursive: true, force: true });
   }
 
   async getMobileSettings({
@@ -486,10 +491,12 @@ export default function createLighthouseBenchmark(
   return {
     group,
     async setup(_raceCancellation) {
+      const userDataDir = await mkdtemp(join(tmpdir(), 'lighthouse-'));
       const chrome = await launch({
-        chromeFlags
+        chromeFlags,
+        userDataDir,
       });
-      return new LighthouseSampler(chrome, url, options);
+      return new LighthouseSampler(chrome, url, options, userDataDir);
     }
   };
 }
