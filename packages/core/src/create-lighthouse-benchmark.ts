@@ -202,11 +202,14 @@ async function runLighthouse(
       const parsedUrl = new URL(url);
       const host = parsedUrl.host;
       const path = parsedUrl.pathname;
+      const query = parsedUrl.search;
 
       const namePrefix = `tracerbench-results/${prefix}${host.replace(
         ':',
         '_'
-      )}_${path.replace(/\//g, '_')}`;
+      )}_${path.replace(/\//g, '_')}_${query
+        .replace(/\?/g, '_')
+        .replace(/=/g, '_')}`;
 
       writeFileSync(
         `${namePrefix}_lighthouse_report.html`,
