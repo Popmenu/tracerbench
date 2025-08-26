@@ -188,182 +188,200 @@ const allowedConsoleErrors: string[] = process.env
 async function runLighthouse(
   prefix: string,
   url: string,
-  lhSettings: any,
-  retries = 3
+  lhSettings: any
 ): Promise<PhaseSample[]> {
-  let lastError: Error | null = null;
+  const lighthouse = (await eval("import('lighthouse')")).default;
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const lighthouse = (await eval("import('lighthouse')")).default;
-      const runnerResult: LighthouseResult = await lighthouse(url, lhSettings);
+  // 5 minutes
+  const timeoutMs = 300000;
 
-      runnerResult.lhr.categories;
-      const parsedUrl = new URL(url);
-      const host = parsedUrl.host;
-      const path = parsedUrl.pathname;
-      const query = parsedUrl.search;
+  let timeout: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error('Lighthouse timeout'));
+    }, timeoutMs);
+  });
 
-      const namePrefix = `tracerbench-results/${prefix}${host.replace(
-        ':',
-        '_'
-      )}_${path.replace(/\//g, '_')}_${query
-        .replace(/\?/g, '_')
-        .replace(/=/g, '_')}`;
+  const runnerResult: LighthouseResult = await Promise.race([
+    lighthouse(url, lhSettings),
+    timeoutPromise
+  ]);
 
-      writeFileSync(
-        `${namePrefix}_lighthouse_report.html`,
-        runnerResult.report
-      );
-      if (runnerResult.artifacts?.traces?.defaultPass) {
-        writeFileSync(
-          `${namePrefix}_performance_profile.json`,
-          JSON.stringify(runnerResult.artifacts.traces.defaultPass)
-        );
-      }
-
-      const totalSizeBytes = updateDownloadedSizes(
-        runnerResult,
-        namePrefix,
-        url
-      );
-
-      if (runnerResult.lhr.runtimeError) {
-        throw new Error(
-          `Tracerbench encountered runtime error when running ${url}: ${JSON.stringify(
-            runnerResult.lhr.runtimeError,
-            null,
-            2
-          )}`
-        );
-      }
-      runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
-        if (
-          !allowedConsoleErrors.some((allowedError) =>
-            JSON.stringify(message).includes(allowedError)
-          )
-        ) {
-          console.log(
-            chalk.red(
-              `Measurements Error: console.${message.level}: ${message.text} ${message.url} TESTED PAGE: ${url}`
-            )
-          );
-        }
-      });
-
-      let results: PhaseSample[] = [];
-
-      if (runnerResult.lhr.categories.performance) {
-        results = [
-          'first-contentful-paint',
-          'speed-index',
-          'largest-contentful-paint',
-          'total-blocking-time',
-          'cumulative-layout-shift',
-          'server-response-time'
-        ].map((phase) => ({
-          phase: prefix + phase,
-          duration:
-            runnerResult.lhr.audits[phase].numericValue *
-            (phase === 'cumulative-layout-shift' ? 100 : 1000),
-          start: 0,
-          addToChart: true,
-          sign: 1,
-          unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
-        }));
-
-        const popmenuHydrationDuration = extractPerformanceDuration(
-          runnerResult,
-          'popmenu-hydration-start',
-          'popmenu-hydration-end'
-        );
-        if (popmenuHydrationDuration != null) {
-          results.push({
-            phase: prefix + 'hydration',
-            duration: popmenuHydrationDuration * 1000,
-            sign: 1,
-            start: 0,
-            unit: 'ms'
-          });
-        }
-
-        const popmenuHydrationStart = extractPerformanceMarkerTime(
-          runnerResult,
-          'popmenu-hydration-start'
-        );
-        if (popmenuHydrationStart != null) {
-          results.push({
-            phase: prefix + 'hydration-start',
-            duration: popmenuHydrationStart * 1000,
-            sign: 1,
-            start: 0,
-            unit: 'ms'
-          });
-        }
-
-        results.push({
-          phase: prefix + 'downloads',
-          duration: totalSizeBytes / 1024,
-          sign: 1,
-          start: 0,
-          unit: 'KB'
-        });
-
-        results.push({
-          phase: prefix + 'total-score',
-          duration: runnerResult.lhr.categories.performance.score * 100,
-          sign: -1,
-          start: 0,
-          unit: '/100'
-        });
-      }
-
-      if (runnerResult.lhr.categories.accessibility) {
-        runnerResult.artifacts.Accessibility?.violations?.forEach(
-          (violation) => {
-            console.log(
-              chalk.red(
-                `Lighthouse acessibility violation on ${url}: ${violation.id}`
-              )
-            );
-          }
-        );
-        results.unshift({
-          phase: prefix + 'accessibility',
-          duration: runnerResult.lhr.categories.accessibility.score * 100,
-          sign: -1,
-          start: 0,
-          unit: '/100'
-        });
-      }
-
-      return results;
-    } catch (error) {
-      lastError = error as Error;
-      if (attempt < retries) {
-        console.log(chalk.red(lastError.message), lastError.stack);
-        console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
+  if (timeout) {
+    clearTimeout(timeout);
   }
 
-  throw new Error(
-    `Failed after ${retries} attempts. Last error: ${lastError?.message}`
-  );
+  runnerResult.lhr.categories;
+  const parsedUrl = new URL(url);
+  const host = parsedUrl.host;
+  const path = parsedUrl.pathname;
+  const query = parsedUrl.search;
+
+  const namePrefix = `tracerbench-results/${prefix}${host.replace(
+    ':',
+    '_'
+  )}_${path.replace(/\//g, '_')}_${query
+    .replace(/\?/g, '_')
+    .replace(/=/g, '_')}`;
+
+  writeFileSync(`${namePrefix}_lighthouse_report.html`, runnerResult.report);
+  if (runnerResult.artifacts?.traces?.defaultPass) {
+    writeFileSync(
+      `${namePrefix}_performance_profile.json`,
+      JSON.stringify(runnerResult.artifacts.traces.defaultPass)
+    );
+  }
+
+  const totalSizeBytes = updateDownloadedSizes(runnerResult, namePrefix, url);
+
+  if (runnerResult.lhr.runtimeError) {
+    throw new Error(
+      `Tracerbench encountered runtime error when running ${url}: ${JSON.stringify(
+        runnerResult.lhr.runtimeError,
+        null,
+        2
+      )}`
+    );
+  }
+  runnerResult.artifacts.ConsoleMessages?.forEach((message) => {
+    if (
+      !allowedConsoleErrors.some((allowedError) =>
+        JSON.stringify(message).includes(allowedError)
+      )
+    ) {
+      console.log(
+        chalk.red(
+          `Measurements Error: console.${message.level}: ${message.text} ${message.url} TESTED PAGE: ${url}`
+        )
+      );
+    }
+  });
+
+  let results: PhaseSample[] = [];
+
+  if (runnerResult.lhr.categories.performance) {
+    results = [
+      'first-contentful-paint',
+      'speed-index',
+      'largest-contentful-paint',
+      'total-blocking-time',
+      'cumulative-layout-shift',
+      'server-response-time'
+    ].map((phase) => ({
+      phase: prefix + phase,
+      duration:
+        runnerResult.lhr.audits[phase].numericValue *
+        (phase === 'cumulative-layout-shift' ? 100 : 1000),
+      start: 0,
+      addToChart: true,
+      sign: 1,
+      unit: phase === 'cumulative-layout-shift' ? '/100' : 'ms'
+    }));
+
+    const popmenuHydrationDuration = extractPerformanceDuration(
+      runnerResult,
+      'popmenu-hydration-start',
+      'popmenu-hydration-end'
+    );
+    if (popmenuHydrationDuration != null) {
+      results.push({
+        phase: prefix + 'hydration',
+        duration: popmenuHydrationDuration * 1000,
+        sign: 1,
+        start: 0,
+        unit: 'ms'
+      });
+    }
+
+    const popmenuHydrationStart = extractPerformanceMarkerTime(
+      runnerResult,
+      'popmenu-hydration-start'
+    );
+    if (popmenuHydrationStart != null) {
+      results.push({
+        phase: prefix + 'hydration-start',
+        duration: popmenuHydrationStart * 1000,
+        sign: 1,
+        start: 0,
+        unit: 'ms'
+      });
+    }
+
+    results.push({
+      phase: prefix + 'downloads',
+      duration: totalSizeBytes / 1024,
+      sign: 1,
+      start: 0,
+      unit: 'KB'
+    });
+
+    results.push({
+      phase: prefix + 'total-score',
+      duration: runnerResult.lhr.categories.performance.score * 100,
+      sign: -1,
+      start: 0,
+      unit: '/100'
+    });
+  }
+
+  if (runnerResult.lhr.categories.accessibility) {
+    runnerResult.artifacts.Accessibility?.violations?.forEach((violation) => {
+      console.log(
+        chalk.red(
+          `Lighthouse acessibility violation on ${url}: ${violation.id}`
+        )
+      );
+    });
+    results.unshift({
+      phase: prefix + 'accessibility',
+      duration: runnerResult.lhr.categories.accessibility.score * 100,
+      sign: -1,
+      start: 0,
+      unit: '/100'
+    });
+  }
+
+  return results;
 }
 
 class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
+  private chrome: LaunchedChrome | null = null;
+  private userDataDir: string | null = null;
+
   constructor(
-    private chrome: LaunchedChrome,
     private url: string,
-    private options: Partial<NavigationBenchmarkOptions>,
-    private userDataDir: string
+    private options: Partial<NavigationBenchmarkOptions>
   ) {}
 
+  async setupBrowser(): Promise<void> {
+    const chromeFlags = [
+      '--headless',
+      // For Image Proxy
+      '--ignore-certificate-errors',
+      // There is no GPU on CI
+      '--enable-unsafe-swiftshader',
+      // The --disable-dev-shm-usage flag is needed to prevent Chrome from throwing PROTOCOL_TIMEOUT error in docker container.
+      '--disable-dev-shm-usage'
+    ];
+
+    if (process.env.TRACERBENCH_PROXY_URL) {
+      chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
+    }
+
+    this.userDataDir = await mkdtemp(join(tmpdir(), 'lighthouse-'));
+    this.chrome = await launch({
+      chromeFlags,
+      userDataDir: this.userDataDir
+    });
+  }
+
+  async killBrowser(): Promise<void> {
+    await this.chrome!.kill();
+    await rm(this.userDataDir!, { recursive: true, force: true });
+  }
+
   async dispose(): Promise<void> {
-    await this.chrome.kill();
-    await rm(this.userDataDir, { recursive: true, force: true });
+    await this.killBrowser();
   }
 
   async getMobileSettings({
@@ -395,7 +413,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       },
       output: 'html',
       onlyCategories: ['performance'],
-      port: this.chrome.port
+      port: this.chrome!.port
     };
   }
 
@@ -420,7 +438,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         logLevel: 'error',
         output: 'html',
         onlyCategories: ['accessibility'],
-        port: this.chrome.port
+        port: this.chrome!.port
       },
       mobile: await this.getMobileSettings({ width: 390, height: 844 }),
       landscapeMobile: await this.getMobileSettings({
@@ -439,7 +457,7 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
         logLevel: 'error',
         output: 'html',
         onlyCategories: ['performance'],
-        port: this.chrome.port
+        port: this.chrome!.port
       }
     };
 
@@ -454,14 +472,39 @@ class LighthouseSampler implements BenchmarkSampler<NavigationSample> {
       if (!lhSettings) {
         throw new Error(`Unknown LH preset ${preset}`);
       }
-      phases = [
-        ...phases,
-        ...(await runLighthouse(
-          presetsToRun.length === 1 ? '' : preset + '-',
-          this.url,
-          lhSettings
-        ))
-      ];
+
+      let lastError: Error | null = null;
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        try {
+          phases = [
+            ...phases,
+            ...(await runLighthouse(
+              presetsToRun.length === 1 ? '' : preset + '-',
+              this.url,
+              lhSettings
+            ))
+          ];
+          break;
+        } catch (error) {
+          lastError = error as Error;
+          if (attempt <= maxRetries) {
+            console.log(chalk.red(lastError.message), lastError.stack);
+            console.log(chalk.yellow(`Attempt ${attempt} failed, retrying...`));
+            await this.killBrowser();
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            await this.setupBrowser();
+            lhSettings.port = this.chrome!.port;
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          } else {
+            throw new Error(
+              `Failed after ${maxRetries + 1} attempts. Last error: ${
+                lastError?.message
+              }`
+            );
+          }
+        }
+      }
     }
 
     return {
@@ -478,28 +521,12 @@ export default function createLighthouseBenchmark(
   _markers: Marker[],
   options: Partial<NavigationBenchmarkOptions> = {}
 ): Benchmark<NavigationSample> {
-  const chromeFlags = [
-    '--headless',
-    // For Image Proxy
-    '--ignore-certificate-errors',
-    // There is no GPU on CI
-    '--enable-unsafe-swiftshader',
-    // The --disable-dev-shm-usage flag is needed to prevent Chrome from throwing PROTOCOL_TIMEOUT error in docker container.
-    '--disable-dev-shm-usage',
-  ];
-
-  if (process.env.TRACERBENCH_PROXY_URL) {
-    chromeFlags.push(`--proxy-server=${process.env.TRACERBENCH_PROXY_URL}`);
-  }
   return {
     group,
     async setup(_raceCancellation) {
-      const userDataDir = await mkdtemp(join(tmpdir(), 'lighthouse-'));
-      const chrome = await launch({
-        chromeFlags,
-        userDataDir,
-      });
-      return new LighthouseSampler(chrome, url, options, userDataDir);
+      const sampler = new LighthouseSampler(url, options);
+      await sampler.setupBrowser();
+      return sampler;
     }
   };
 }
