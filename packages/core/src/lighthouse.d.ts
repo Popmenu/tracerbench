@@ -219,6 +219,14 @@ declare module 'lighthouse' {
         violations: [
           {
             id: string;
+            nodes: [
+              {
+                node: {
+                  selector: string;
+                  snippet: string;
+                };
+              }
+            ];
           }
         ];
       };

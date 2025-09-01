@@ -326,11 +326,13 @@ async function runLighthouse(
 
   if (runnerResult.lhr.categories.accessibility) {
     runnerResult.artifacts.Accessibility?.violations?.forEach((violation) => {
-      console.log(
-        chalk.red(
-          `Lighthouse acessibility violation on ${url}: ${violation.id}`
-        )
-      );
+      violation.nodes.forEach((node) => {
+        console.log(
+          chalk.red(
+            `Lighthouse acessibility violation ID=${violation.id} SELECTOR="${node.node.selector}" SNIPPET=${node.node.snippet} URL=${url}`
+          )
+        );
+      });
     });
     results.unshift({
       phase: prefix + 'accessibility',
